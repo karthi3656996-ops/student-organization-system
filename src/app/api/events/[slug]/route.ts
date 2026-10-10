@@ -97,6 +97,11 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ s
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
+    const existingBookings = await prisma.ticketBooking.count({ where: { eventId: existing.id } });
+    if (existingBookings > 0) {
+      return NextResponse.json({ error: 'Cannot delete an event that has active bookings. Please cancel the event instead.' }, { status: 409 });
+    }
+
     await prisma.event.delete({
       where: { slug }
     });
