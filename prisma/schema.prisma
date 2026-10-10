@@ -1,0 +1,339 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -------------------------------------------------------------
+// 1. IDENTITY & ACCESS CONTROL
+// -------------------------------------------------------------
+enum UserRole {
+  STUDENT
+  MEMBER
+  VOLUNTEER
+  EVENT_LEAD
+  TREASURER
+  ADMIN
+}
+
+model User {
+  id               String               @id @default(uuid())
+  email            String               @unique
+  name             String
+  passwordHash     String
+  role             UserRole             @default(STUDENT)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  memberProfile    Member?
+  ticketBookings   TicketBooking[]
+  merchOrders      MerchOrder[]
+  assignedTasks    VolunteerTask[]
+  claimsSubmitted  ReimbursementClaim[] @relation("ClaimSubmitter")
+  claimsReviewed   ReimbursementClaim[] @relation("ClaimReviewer")
+  announcements    Announcement[]
+  checkedInTickets TicketInstance[]     @relation("CheckedInByUser")
+}
+
+// -------------------------------------------------------------
+// 2. MEMBER & MEMBERSHIP MANAGEMENT
+// -------------------------------------------------------------
+enum MembershipStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+model Member {
+  id            String             @id @default(uuid())
+  userId        String             @unique
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentId     String             @unique
+  department    String
+  graduationYear Int
+  phoneNumber   String
+  status        MembershipStatus   @default(PENDING_PAYMENT)
+  validFrom     DateTime?
+  validUntil    DateTime?
+  memberQrToken String             @unique @default(uuid())
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  payments      MembershipPayment[]
+  reminders     MembershipReminder[]
+}
+
+model MembershipPayment {
+  id               String                @id @default(uuid())
+  memberId         String
+  member           Member                @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  academicYear     String                // e.g. "2025-2026"
+  amount           Decimal
+  paymentMethod    String                // "ONLINE", "CASH_TABLE"
+  paymentReference String                @unique // Idempotency key
+  status           String                // "COMPLETED", "PENDING"
+  paidAt           DateTime              @default(now())
+
+  financialTxnId   String?               @unique
+  financialTxn     FinancialTransaction? @relation(fields: [financialTxnId], references: [id])
+}
+
+model MembershipReminder {
+  id           String   @id @default(uuid())
+  memberId     String
+  member       Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  reminderType String   // "30_DAYS_BEFORE", "7_DAYS_BEFORE", "LAPSED"
+  sentAt       DateTime @default(now())
+  status       String   @default("SENT")
+}
+
+// -------------------------------------------------------------
+// 3. EVENTS, TICKETING & ATTENDANCE
+// -------------------------------------------------------------
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  COMPLETED
+  CANCELLED
+}
+
+model Event {
+  id            String          @id @default(uuid())
+  title         String
+  slug          String          @unique
+  description   String
+  venue         String
+  startTime     DateTime
+  endTime       DateTime
+  totalCapacity Int
+  status        EventStatus     @default(DRAFT)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  ticketTiers   TicketTier[]
+  bookings      TicketBooking[]
+  volunteerTasks VolunteerTask[]
+}
+
+model TicketTier {
+  id            String           @id @default(uuid())
+  eventId       String
+  event         Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tierName      String           // e.g. "Member Discount Pass", "General Public"
+  price         Decimal
+  isMemberOnly  Boolean          @default(false)
+  capacityLimit Int?
+  tickets       TicketInstance[]
+}
+
+model TicketBooking {
+  id               String                @id @default(uuid())
+  bookingReference String                @unique // e.g. "BK-2026-X892"
+  eventId          String
+  event            Event                 @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  userId           String?
+  user             User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  guestName        String?
+  guestEmail       String?
+  totalAmount      Decimal
+  paymentStatus    String                // "PAID", "CANCELLED"
+  createdAt        DateTime              @default(now())
+
+  tickets          TicketInstance[]
+  financialTxnId   String?               @unique
+  financialTxn     FinancialTransaction? @relation(fields: [financialTxnId], references: [id])
+}
+
+model TicketInstance {
+  id                String         @id @default(uuid())
+  bookingId         String
+  booking           TicketBooking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  tierId            String
+  tier              TicketTier     @relation(fields: [tierId], references: [id], onDelete: Restrict)
+  ticketCode        String         @unique // Signed QR code string
+  attendeeName      String
+  isCheckedIn       Boolean        @default(false)
+  checkedInAt       DateTime?
+  checkedInByUserId String?
+  checkedInByUser   User?          @relation("CheckedInByUser", fields: [checkedInByUserId], references: [id], onDelete: SetNull)
+
+  @@index([ticketCode])
+}
+
+// -------------------------------------------------------------
+// 4. ANNOUNCEMENTS & MAILING
+// -------------------------------------------------------------
+model Announcement {
+  id              String   @id @default(uuid())
+  title           String
+  content         String
+  priority        String   @default("NORMAL") // "NORMAL", "URGENT"
+  audience        String   @default("ALL")    // "ALL", "MEMBERS_ONLY", "VOLUNTEERS"
+  authorId        String
+  author          User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  publishedAt     DateTime @default(now())
+  emailDispatched Boolean  @default(false)
+}
+
+// -------------------------------------------------------------
+// 5. MERCHANDISE & SIZE INVENTORY
+// -------------------------------------------------------------
+model MerchItem {
+  id          String         @id @default(uuid())
+  name        String
+  description String
+  imageUrl    String
+  basePrice   Decimal
+  memberPrice Decimal
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+
+  variants    MerchVariant[]
+}
+
+model MerchVariant {
+  id            String           @id @default(uuid())
+  merchItemId   String
+  merchItem     MerchItem        @relation(fields: [merchItemId], references: [id], onDelete: Cascade)
+  size          String           // "XS", "S", "M", "L", "XL", "XXL"
+  color         String           @default("Standard")
+  stockQuantity Int
+  orderItems    MerchOrderItem[]
+
+  @@unique([merchItemId, size, color])
+}
+
+model MerchOrder {
+  id                String                @id @default(uuid())
+  orderNumber       String                @unique // e.g. "ORD-2026-904"
+  userId            String
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  totalAmount       Decimal
+  paymentStatus     String                // "PAID", "CANCELLED"
+  fulfillmentStatus String                @default("PENDING") // "PENDING", "READY_FOR_PICKUP", "COMPLETED"
+  pickupCode        String                @unique
+  createdAt         DateTime              @default(now())
+
+  items             MerchOrderItem[]
+  financialTxnId    String?               @unique
+  financialTxn      FinancialTransaction? @relation(fields: [financialTxnId], references: [id])
+}
+
+model MerchOrderItem {
+  id        String       @id @default(uuid())
+  orderId   String
+  order     MerchOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   MerchVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  quantity  Int
+  unitPrice Decimal
+}
+
+// -------------------------------------------------------------
+// 6. FUNDRAISERS & VOLUNTEER TASK ASSIGNMENTS
+// -------------------------------------------------------------
+model FundraiserCampaign {
+  id            String          @id @default(uuid())
+  title         String
+  description   String
+  targetAmount  Decimal
+  currentAmount Decimal         @default(0.00)
+  startDate     DateTime
+  endDate       DateTime?
+  status        String          @default("ACTIVE") // "ACTIVE", "COMPLETED"
+  createdAt     DateTime        @default(now())
+
+  tasks         VolunteerTask[]
+}
+
+enum TaskStatus {
+  TO_DO
+  IN_PROGRESS
+  DONE
+}
+
+model VolunteerTask {
+  id           String              @id @default(uuid())
+  title        String
+  description  String
+  campaignId   String?
+  campaign     FundraiserCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  eventId      String?
+  event        Event?              @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  assignedToId String?
+  assignedTo   User?               @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  status       TaskStatus          @default(TO_DO)
+  priority     String              @default("MEDIUM") // "LOW", "MEDIUM", "HIGH"
+  dueDate      DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
+
+// -------------------------------------------------------------
+// 7. EXPENSE REIMBURSEMENTS & UNIFIED FINANCIAL LEDGER
+// -------------------------------------------------------------
+enum ClaimStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  REIMBURSED
+}
+
+model ReimbursementClaim {
+  id          String      @id @default(uuid())
+  claimNumber String      @unique // e.g. "CLM-2026-081"
+  volunteerId String
+  volunteer   User        @relation("ClaimSubmitter", fields: [volunteerId], references: [id], onDelete: Cascade)
+  category    String      // "SUPPLIES", "FOOD_REFRESHMENTS", "VENUE", "PRINTING", "OTHER"
+  amount      Decimal
+  description String
+  receiptUrl  String
+  status      ClaimStatus @default(SUBMITTED)
+  reviewedById String?
+  reviewedBy  User?       @relation("ClaimReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewNotes String?
+  submittedAt DateTime    @default(now())
+  reviewedAt  DateTime?
+
+  financialTxnId String?               @unique
+  financialTxn   FinancialTransaction? @relation(fields: [financialTxnId], references: [id])
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum LedgerSource {
+  MEMBERSHIP_DUES
+  EVENT_TICKETS
+  MERCHANDISE
+  FUNDRAISER
+  REIMBURSEMENT
+  DIRECT_EXPENSE
+}
+
+model FinancialTransaction {
+  id                String          @id @default(uuid())
+  transactionNumber String          @unique // e.g. "TXN-2026-0049"
+  type              TransactionType
+  sourceModule      LedgerSource
+  amount            Decimal
+  referenceId       String
+  semesterPeriod    String          // e.g. "SPRING_2026", "FALL_2025"
+  description       String
+  recordedAt        DateTime        @default(now())
+
+  membershipPayment  MembershipPayment?
+  ticketBooking      TicketBooking?
+  merchOrder         MerchOrder?
+  reimbursementClaim ReimbursementClaim?
+
+  @@index([semesterPeriod])
+  @@index([type])
+  @@index([sourceModule])
+}
