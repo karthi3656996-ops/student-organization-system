@@ -14,10 +14,10 @@ export const Card: React.FC<CardProps> = ({
 }) => {
   const base = "rounded-xl border p-6 transition-all duration-200";
   const styling = glass
-    ? "bg-slate-900/60 backdrop-blur-md border-slate-800/80 shadow-xl shadow-black/40 text-slate-100"
-    : "bg-slate-900/90 border-slate-800 shadow-lg text-slate-100";
+    ? "bg-white/90 backdrop-blur-md border-slate-200 shadow-sm text-slate-900"
+    : "bg-white border-slate-200/90 shadow-sm text-slate-900";
   const hover = hoverEffect
-    ? "hover:border-indigo-500/50 hover:shadow-indigo-500/10 hover:translate-y-[-2px]"
+    ? "hover:border-blue-400 hover:shadow-md hover:shadow-blue-500/5 hover:translate-y-[-2px]"
     : "";
 
   return (
@@ -38,7 +38,7 @@ export const CardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({
   className = "",
   ...props
 }) => (
-  <h3 className={`text-lg font-bold text-white tracking-tight ${className}`} {...props}>
+  <h3 className={`text-lg font-bold text-slate-900 tracking-tight ${className}`} {...props}>
     {children}
   </h3>
 );
@@ -48,7 +48,7 @@ export const CardDescription: React.FC<React.HTMLAttributes<HTMLParagraphElement
   className = "",
   ...props
 }) => (
-  <p className={`text-sm text-slate-400 leading-relaxed ${className}`} {...props}>
+  <p className={`text-sm text-slate-600 leading-relaxed ${className}`} {...props}>
     {children}
   </p>
 );
@@ -64,7 +64,7 @@ export const CardFooter: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
   className = "",
   ...props
 }) => (
-  <div className={`mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between ${className}`} {...props}>
+  <div className={`mt-4 pt-4 border-t border-slate-100 flex items-center justify-between ${className}`} {...props}>
     {children}
   </div>
 );

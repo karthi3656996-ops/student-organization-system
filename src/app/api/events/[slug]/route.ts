@@ -34,12 +34,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     }
 
     // Only allow updating certain fields for simplicity
-    const { title, description, venue, startTime, endTime, totalCapacity, status } = body;
+    const { title, description, venue, startTime, endTime, totalCapacity, status, imageUrl } = body;
     
     const updateData: Record<string, unknown> = {};
     if (title) updateData.title = title;
     if (description) updateData.description = description;
     if (venue) updateData.venue = venue;
+    if (imageUrl !== undefined) {
+      updateData.imageUrl = typeof imageUrl === "string" && imageUrl.trim() ? imageUrl.trim() : "/images/events/default-event.svg";
+    }
     
     if (startTime) {
       const start = new Date(startTime);

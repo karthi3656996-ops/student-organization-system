@@ -18,6 +18,7 @@ import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { RazorpayCheckoutModal } from "@/components/payments/razorpay-checkout-modal";
 
 export interface TicketTierOption {
   id: string;
@@ -80,7 +81,7 @@ interface FormErrors {
   memberStudentId?: string;
 }
 
-type SubmissionState = "idle" | "submitting" | "success" | "error";
+type SubmissionState = "idle" | "submitting" | "payment_pending" | "success" | "error";
 
 export const EventBookingModal: React.FC<EventBookingModalProps> = ({
   isOpen,
@@ -100,6 +101,9 @@ export const EventBookingModal: React.FC<EventBookingModalProps> = ({
   const [status, setStatus] = useState<SubmissionState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmedBooking, setConfirmedBooking] = useState<BookingSuccessData | null>(null);
+  const [pendingBookingRef, setPendingBookingRef] = useState<string | null>(null);
+  const [pendingTotalAmount, setPendingTotalAmount] = useState<number>(0);
+  const [showCheckoutModal, setShowCheckoutModal] = useState<boolean>(false);
 
   // Fetch events when modal opens
   useEffect(() => {
@@ -235,11 +239,20 @@ export const EventBookingModal: React.FC<EventBookingModalProps> = ({
 
       const data = await response.json().catch(() => null);
 
-      if (response.ok && data?.success && data?.booking) {
-        isSuccess = true;
-        setConfirmedBooking(data.booking);
-        setStatus("success");
-        if (onSuccess) onSuccess(data.booking);
+      if (response.ok && data?.success) {
+        if (data.isPaymentRequired) {
+          // Ticket requires payment verification!
+          setPendingBookingRef(data.bookingReference);
+          setPendingTotalAmount(data.totalAmount);
+          setStatus("payment_pending");
+          setShowCheckoutModal(true);
+        } else if (data.booking) {
+          // Free ticket confirmed
+          isSuccess = true;
+          setConfirmedBooking(data.booking);
+          setStatus("success");
+          if (onSuccess) onSuccess(data.booking);
+        }
       } else {
         setStatus("error");
         setErrorMessage(
@@ -256,6 +269,21 @@ export const EventBookingModal: React.FC<EventBookingModalProps> = ({
     }
   };
 
+  const handlePaymentSuccess = (verifyResult: unknown) => {
+    setShowCheckoutModal(false);
+    const result = verifyResult as { booking?: BookingSuccessData };
+    if (result?.booking) {
+      setConfirmedBooking(result.booking);
+      setStatus("success");
+      if (onSuccess) onSuccess(result.booking);
+    }
+  };
+
+  const handleCheckoutClose = () => {
+    setShowCheckoutModal(false);
+    // Modal remains in payment_pending state so user can retry payment without creating duplicate bookings
+  };
+
   const handleReset = () => {
     setQuantity(1);
     setAttendeeName("");
@@ -265,6 +293,9 @@ export const EventBookingModal: React.FC<EventBookingModalProps> = ({
     setStatus("idle");
     setErrorMessage(null);
     setConfirmedBooking(null);
+    setPendingBookingRef(null);
+    setPendingTotalAmount(0);
+    setShowCheckoutModal(false);
   };
 
   const handleClose = () => {
@@ -272,6 +303,9 @@ export const EventBookingModal: React.FC<EventBookingModalProps> = ({
     setStatus("idle");
     setErrorMessage(null);
     setErrors({});
+    setPendingBookingRef(null);
+    setPendingTotalAmount(0);
+    setShowCheckoutModal(false);
     onClose();
   };
 
@@ -323,7 +357,7 @@ export const EventBookingModal: React.FC<EventBookingModalProps> = ({
               <div>
                 <span className="text-slate-400 block">Tier & Rate:</span>
                 <span className="font-medium text-slate-200">
-                  {confirmedBooking.tierName} (${confirmedBooking.unitPrice.toFixed(2)})
+                  {confirmedBooking.tierName} (₹{confirmedBooking.unitPrice.toFixed(2)})
                 </span>
               </div>
               <div>
@@ -337,9 +371,9 @@ export const EventBookingModal: React.FC<EventBookingModalProps> = ({
                 <span className="font-medium text-slate-200">{confirmedBooking.guestName}</span>
               </div>
               <div>
-                <span className="text-slate-400 block">Total Recorded:</span>
+                <span className="text-slate-400 block">Total Amount:</span>
                 <span className="font-bold text-emerald-400 text-sm">
-                  ${confirmedBooking.totalAmount.toFixed(2)}
+                  ₹{confirmedBooking.totalAmount.toFixed(2)}
                 </span>
               </div>
             </div>
@@ -382,8 +416,65 @@ export const EventBookingModal: React.FC<EventBookingModalProps> = ({
         </div>
       )}
 
+      {/* PAYMENT PENDING STATE */}
+      {status === "payment_pending" && pendingBookingRef && (
+        <div className="py-2 space-y-4">
+          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-bold text-amber-900">
+                Payment Pending — Tickets Not Yet Activated
+              </h4>
+              <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                Your reservation reference is saved, but tickets will <strong>NOT</strong> be issued and digital QR entry passes will <strong>NOT</strong> be active until payment is completed. No revenue has been recorded.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-white border border-blue-100 space-y-2.5 text-xs shadow-sm">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <span className="text-slate-500 font-medium">Booking Reference</span>
+              <span className="font-mono font-bold text-blue-700 text-sm">{pendingBookingRef}</span>
+            </div>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <span className="text-slate-500 font-medium">Payment Status</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                PENDING PAYMENT
+              </span>
+            </div>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <span className="text-slate-500 font-medium">Event</span>
+              <span className="font-semibold text-slate-800">{currentEvent?.title}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">Total Amount Due</span>
+              <span className="font-bold text-slate-900 text-sm">₹{pendingTotalAmount.toFixed(2)}</span>
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <span className="text-xs text-slate-600 text-center sm:text-left">
+              Complete payment now to verify and generate your official gate-entry passes.
+            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button type="button" variant="outline" size="sm" onClick={handleReset}>
+                Start Over
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold cursor-pointer"
+                onClick={() => setShowCheckoutModal(true)}
+              >
+                Pay Now (₹{pendingTotalAmount.toFixed(2)}) →
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* BOOKING FORM STATE */}
-      {status !== "success" && (
+      {status !== "success" && status !== "payment_pending" && (
         <form onSubmit={handleSubmit} noValidate className="space-y-4 pt-1">
           {/* Error Banner */}
           {status === "error" && errorMessage && (
@@ -644,13 +735,28 @@ export const EventBookingModal: React.FC<EventBookingModalProps> = ({
               variant="gradient"
               size="md"
               isLoading={status === "submitting"}
-              className="gap-2"
+              className="gap-2 cursor-pointer"
             >
-              Confirm Booking (${totalPrice.toFixed(2)})
+              {totalPrice === 0
+                ? "Confirm Free Reservation"
+                : `Proceed to Payment (₹${totalPrice.toFixed(2)})`}
               <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
         </form>
+      )}
+
+      {/* Razorpay Gateway Modal Integration */}
+      {showCheckoutModal && pendingBookingRef && (
+        <RazorpayCheckoutModal
+          isOpen={showCheckoutModal}
+          onClose={handleCheckoutClose}
+          title={`Ticket Pass: ${currentEvent?.title || "Event Reservation"}`}
+          amount={pendingTotalAmount}
+          purpose="EVENT_TICKET"
+          referenceId={pendingBookingRef}
+          onSuccess={handlePaymentSuccess}
+        />
       )}
     </Modal>
   );

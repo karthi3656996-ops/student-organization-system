@@ -4,9 +4,10 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
 export const metadata: Metadata = {
-  title: "Skyline Student Association | Unified Organization Management System",
+  title: "Skyline Student Association | Student Organization Management System",
   description:
-    "Unified software platform running events, memberships, merchandise, volunteer tasks, and finances in one place for the Skyline Student Association (Odoo x NMIT Hackathon 2026).",
+    "The unified platform for Skyline Student Association — manage events, memberships, merchandise, fundraisers, and finances in one place.",
+  keywords: "student association, events, membership, tickets, merchandise, campus",
 };
 
 export default function RootLayout({
@@ -15,8 +16,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen flex flex-col bg-[#0B0F19] text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
+    <html lang="en">
+      <body className="min-h-screen flex flex-col bg-white text-slate-900 antialiased">
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />

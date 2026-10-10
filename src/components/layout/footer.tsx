@@ -1,55 +1,103 @@
 import React from "react";
-import { Compass, ShieldCheck, Heart, GitBranch } from "lucide-react";
+import Link from "next/link";
+import { Compass, ShieldCheck, GitBranch, Heart } from "lucide-react";
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="border-t border-slate-800/80 bg-slate-950 text-slate-400 py-12">
+    <footer className="border-t border-blue-100 bg-[#F8FBFF] text-slate-500 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
+          {/* Brand */}
           <div className="md:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-violet-600 flex items-center justify-center text-white font-bold">
-                <Compass className="w-4 h-4" />
+              <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center">
+                <Compass className="w-5 h-5 text-white" />
               </div>
-              <span className="text-base font-bold text-white tracking-tight">
+              <span className="text-base font-bold text-slate-900 tracking-tight">
                 Skyline Student Association
               </span>
             </div>
-            <p className="text-sm text-slate-400 max-w-sm leading-relaxed">
-              The digital backbone running campus events, memberships, merchandise, volunteer tasks, and finances in one unified place.
+            <p className="text-sm text-slate-500 max-w-sm leading-relaxed">
+              The unified digital platform for managing campus events, memberships,
+              merchandise, volunteer tasks, and finances in one place.
             </p>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-300">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Odoo x NMIT Bangalore Hackathon 2026</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-xs text-blue-700 font-medium">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+              <span>Odoo × NMIT Bangalore Hackathon 2026</span>
             </div>
           </div>
 
+          {/* Platform Links */}
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-200 mb-3">
-              Platform Modules
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3">
+              Platform
             </h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="#events" className="hover:text-white transition-colors">Spring Gala & Events</a></li>
-              <li><a href="#membership" className="hover:text-white transition-colors">Membership & Benefits</a></li>
-              <li><a href="#merchandise" className="hover:text-white transition-colors">Club Apparel & Hoodies</a></li>
-              <li><a href="#fundraisers" className="hover:text-white transition-colors">Bake Sale & Fundraisers</a></li>
+              <li>
+                <Link href="/dashboard" className="hover:text-blue-600 transition-colors">
+                  CampusHub Dashboard
+                </Link>
+              </li>
+              <li>
+                <Link href="/#events" className="hover:text-blue-600 transition-colors">
+                  Events & Ticketing
+                </Link>
+              </li>
+              <li>
+                <Link href="/#membership" className="hover:text-blue-600 transition-colors">
+                  Membership & Benefits
+                </Link>
+              </li>
+              <li>
+                <Link href="/#merchandise" className="hover:text-blue-600 transition-colors">
+                  Merchandise Store
+                </Link>
+              </li>
+              <li>
+                <Link href="/#fundraisers" className="hover:text-blue-600 transition-colors">
+                  Fundraisers
+                </Link>
+              </li>
+              <li>
+                <Link href="/announcements" className="hover:text-blue-600 transition-colors">
+                  Announcements
+                </Link>
+              </li>
             </ul>
           </div>
 
+          {/* Portals & Docs */}
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-200 mb-3">
-              Leadership & Finance
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3">
+              Portals
             </h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="#finance" className="hover:text-white transition-colors">Treasurer Balance Ledger</a></li>
-              <li><a href="#volunteer" className="hover:text-white transition-colors">Volunteer Reimbursements</a></li>
-              <li><a href="#announcements" className="hover:text-white transition-colors">Announcements Bulletin</a></li>
               <li>
-                <a 
-                  href="https://github.com/karthi3656996-ops/student-organization-system" 
-                  target="_blank" 
+                <Link href="/student" className="hover:text-blue-600 transition-colors">
+                  Student Portal
+                </Link>
+              </li>
+              <li>
+                <Link href="/admin" className="hover:text-blue-600 transition-colors">
+                  Admin Portal
+                </Link>
+              </li>
+              <li>
+                <Link href="/student/login" className="hover:text-blue-600 transition-colors">
+                  Student Login
+                </Link>
+              </li>
+              <li>
+                <Link href="/admin/login" className="hover:text-blue-600 transition-colors">
+                  Admin Login
+                </Link>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/karthi3656996-ops/student-organization-system"
+                  target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
+                  className="inline-flex items-center gap-1.5 hover:text-blue-600 transition-colors"
                 >
                   <GitBranch className="w-3.5 h-3.5" />
                   GitHub Repository
@@ -59,10 +107,12 @@ export const Footer: React.FC = () => {
           </div>
         </div>
 
-        <div className="pt-8 border-t border-slate-800/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <div className="pt-8 border-t border-blue-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
           <p>© 2026 Skyline Student Association. All rights reserved.</p>
           <p className="flex items-center gap-1">
-            Built for Odoo x NMIT Hackathon with <Heart className="w-3 h-3 text-rose-500 fill-rose-500 inline" />
+            Built with{" "}
+            <Heart className="w-3 h-3 text-rose-400 fill-rose-400 inline mx-0.5" />
+            for Odoo × NMIT Hackathon 2026
           </p>
         </div>
       </div>

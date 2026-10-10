@@ -32,21 +32,27 @@ export async function GET(request: Request) {
     });
 
     const formattedEvents = events.map((event) => {
-      // Calculate total tickets booked across non-cancelled bookings
-      const totalBookedTickets = event.bookings.reduce(
+      // Calculate total confirmed tickets booked (PAID or CONFIRMED)
+      const confirmedBookedTickets = event.bookings.reduce(
         (sum, booking) =>
-          sum + (booking.paymentStatus !== 'CANCELLED' ? booking.tickets.length : 0),
+          sum + (booking.paymentStatus === 'PAID' || booking.paymentStatus === 'CONFIRMED' ? booking.tickets.length : 0),
         0
       );
 
-      const remainingCapacity = Math.max(0, event.totalCapacity - totalBookedTickets);
+      const pendingTickets = event.bookings.reduce(
+        (sum, booking) =>
+          sum + (booking.paymentStatus === 'PENDING_PAYMENT' ? booking.tickets.length : 0),
+        0
+      );
+
+      const remainingCapacity = Math.max(0, event.totalCapacity - confirmedBookedTickets);
 
       // Calculate per-tier remaining
       const tiersWithAvailability = event.ticketTiers.map((tier) => {
         const tierBooked = event.bookings.reduce(
           (sum, booking) =>
             sum +
-            (booking.paymentStatus !== 'CANCELLED'
+            (booking.paymentStatus === 'PAID' || booking.paymentStatus === 'CONFIRMED'
               ? booking.tickets.filter((t) => t.tierId === tier.id).length
               : 0),
           0
@@ -77,10 +83,22 @@ export async function GET(request: Request) {
         startTime: event.startTime,
         endTime: event.endTime,
         totalCapacity: event.totalCapacity,
+        imageUrl: event.imageUrl || "/images/events/default-event.svg",
         status: event.status,
-        bookedTickets: totalBookedTickets,
+        bookedTickets: confirmedBookedTickets,
+        pendingTickets,
         remainingCapacity,
         ticketTiers: tiersWithAvailability,
+        bookings: event.bookings.map((b) => ({
+          id: b.id,
+          bookingReference: b.bookingReference,
+          guestName: b.guestName,
+          guestEmail: b.guestEmail,
+          paymentStatus: b.paymentStatus,
+          totalAmount: Number(b.totalAmount),
+          ticketCount: b.tickets.length,
+          createdAt: b.createdAt,
+        })),
       };
     });
 
@@ -97,11 +115,17 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, slug, description, venue, startTime, endTime, totalCapacity, status, ticketTiers } = body;
+    const { title, slug, description, venue, startTime, endTime, totalCapacity, status, ticketTiers, imageUrl } = body;
 
     // Validation
     if (!title || !slug || !description || !venue || !startTime || !endTime || totalCapacity === undefined) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Validate imageUrl if provided
+    let cleanImageUrl: string | null = null;
+    if (typeof imageUrl === "string" && imageUrl.trim()) {
+      cleanImageUrl = imageUrl.trim();
     }
 
     const start = new Date(startTime);
@@ -161,6 +185,7 @@ export async function POST(request: Request) {
         startTime: start,
         endTime: end,
         totalCapacity,
+        imageUrl: cleanImageUrl || "/images/events/default-event.svg",
         status: eventStatus,
         ticketTiers: {
           create: tiersData,
@@ -177,3 +202,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+

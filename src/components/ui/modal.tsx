@@ -47,22 +47,22 @@ export const Modal: React.FC<ModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
 
       {/* Modal Dialog */}
       <div
-        className={`relative w-full ${maxWidths[maxWidth]} rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/80 z-10 overflow-hidden transform transition-all p-6 text-slate-100`}
+        className={`relative w-full ${maxWidths[maxWidth]} rounded-2xl bg-white border border-slate-200 shadow-2xl z-10 overflow-hidden transform transition-all p-6 text-slate-900`}
       >
         <div className="flex items-start justify-between mb-4">
           <div>
-            {title && <h3 className="text-xl font-bold text-white tracking-tight">{title}</h3>}
-            {description && <p className="text-sm text-slate-400 mt-1">{description}</p>}
+            {title && <h3 className="text-xl font-bold text-slate-900 tracking-tight">{title}</h3>}
+            {description && <p className="text-sm text-slate-500 mt-1">{description}</p>}
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

@@ -95,6 +95,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
 
       // 5. Generate Reference and Create Booking
       const bookingReference = `BK-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      const isFree = totalAmount === 0;
 
       const newBooking = await tx.ticketBooking.create({
         data: {
@@ -104,12 +105,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
           guestName: guestName || null,
           guestEmail: guestEmail || null,
           totalAmount,
-          paymentStatus: 'PAID',
+          paymentStatus: isFree ? 'CONFIRMED' : 'PENDING_PAYMENT',
+          financialTxnId: null,
           tickets: {
-            create: tickets.map((t: { tierId: string, attendeeName: string }) => ({
+            create: tickets.map((t: { tierId: string, attendeeName: string }, idx: number) => ({
               tierId: t.tierId,
               attendeeName: t.attendeeName,
-              ticketCode: `TCK-${crypto.randomUUID()}`
+              ticketCode: isFree ? `TCK-${crypto.randomUUID()}` : `PENDING-${bookingReference}-${idx + 1}`
             }))
           }
         },

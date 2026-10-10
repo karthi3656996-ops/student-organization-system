@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="100%" height="100%">
+  <defs>
+    <linearGradient id="cult-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4a044e" />
+      <stop offset="50%" stop-color="#701a75" />
+      <stop offset="100%" stop-color="#1e1b4b" />
+    </linearGradient>
+    <radialGradient id="sun-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#701a75" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <rect width="800" height="450" fill="url(#cult-bg)" />
+  <circle cx="400" cy="200" r="220" fill="url(#sun-glow)" />
+
+  <!-- Festive Confetti & Lights -->
+  <g opacity="0.7">
+    <circle cx="150" cy="90" r="6" fill="#f43f5e" />
+    <circle cx="280" cy="60" r="4" fill="#fbbf24" />
+    <circle cx="520" cy="80" r="5" fill="#38bdf8" />
+    <circle cx="650" cy="110" r="7" fill="#a855f7" />
+    <circle cx="210" cy="150" r="3" fill="#34d399" />
+    <circle cx="610" cy="160" r="4" fill="#f472b6" />
+    <!-- Floating festive diamonds -->
+    <polygon points="120,200 125,210 120,220 115,210" fill="#fde047" />
+    <polygon points="680,220 685,230 680,240 675,230" fill="#fde047" />
+  </g>
+
+  <!-- Stage Spotlight Silhouette / Mask -->
+  <g transform="translate(400, 190)">
+    <!-- Stage curtains / arches -->
+    <path d="M-140,80 C-100,-40 -50,-80 0,-80 C50,-80 100,-40 140,80 Z" fill="#2e1065" stroke="#f472b6" stroke-width="2" />
+    <circle cx="0" cy="0" r="45" fill="#f43f5e" />
+    <!-- Drama & Music Masks -->
+    <path d="M-20,-10 C-20,15 0,25 0,25 C0,25 20,15 20,-10 Z" fill="#ffffff" />
+    <circle cx="-8" cy="-3" r="3" fill="#2e1065" />
+    <circle cx="8" cy="-3" r="3" fill="#2e1065" />
+    <path d="M-6,8 Q0,14 6,8" fill="none" stroke="#2e1065" stroke-width="2" stroke-linecap="round" />
+  </g>
+
+  <!-- Typography -->
+  <text x="400" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="3">CULTURAL ARTS &amp; TALENT FEST</text>
+  <text x="400" y="368" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#fbcfe8" text-anchor="middle" letter-spacing="1">DANCE &bull; THEATRE &bull; MUSIC &bull; FOOD STALLS</text>
+
+  <!-- Tag -->
+  <rect x="25" y="25" width="130" height="30" rx="15" fill="#2e1065" stroke="#f43f5e" stroke-width="1.5" />
+  <text x="90" y="45" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#fda4af" text-anchor="middle">CULTURAL</text>
+</svg>

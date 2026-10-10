@@ -110,6 +110,7 @@ model Event {
   startTime     DateTime
   endTime       DateTime
   totalCapacity Int
+  imageUrl      String?
   status        EventStatus     @default(DRAFT)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="100%" height="100%">
+  <defs>
+    <linearGradient id="def-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="450" fill="url(#def-bg)" />
+
+  <g transform="translate(400, 190)">
+    <circle cx="0" cy="0" r="55" fill="#2563eb" opacity="0.15" />
+    <circle cx="0" cy="0" r="45" fill="#1e40af" stroke="#60a5fa" stroke-width="2" />
+    <!-- Calendar icon -->
+    <rect x="-18" y="-14" width="36" height="32" rx="4" fill="#ffffff" />
+    <rect x="-18" y="-14" width="36" height="8" rx="2" fill="#2563eb" />
+    <circle cx="-10" cy="-18" r="2" fill="#93c5fd" />
+    <circle cx="10" cy="-18" r="2" fill="#93c5fd" />
+    <circle cx="-8" cy="2" r="2" fill="#2563eb" />
+    <circle cx="0" cy="2" r="2" fill="#2563eb" />
+    <circle cx="8" cy="2" r="2" fill="#2563eb" />
+    <circle cx="-8" cy="8" r="2" fill="#2563eb" />
+    <circle cx="0" cy="8" r="2" fill="#2563eb" />
+    <circle cx="8" cy="8" r="2" fill="#2563eb" />
+  </g>
+
+  <text x="400" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="3">SKYLINE CAMPUS EVENT</text>
+  <text x="400" y="368" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#94a3b8" text-anchor="middle" letter-spacing="1">STUDENT ASSOCIATION OFFICIAL GATHERING</text>
+</svg>

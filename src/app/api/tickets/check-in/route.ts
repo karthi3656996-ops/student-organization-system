@@ -26,6 +26,10 @@ export async function POST(request: Request) {
         throw new Error('NOT_FOUND');
       }
 
+      if (ticket.ticketCode.startsWith('PENDING-') || (ticket.booking.paymentStatus !== 'PAID' && ticket.booking.paymentStatus !== 'CONFIRMED')) {
+        throw new Error('PAYMENT_REQUIRED');
+      }
+
       if (ticket.isCheckedIn) {
         throw new Error('ALREADY_CHECKED_IN');
       }
@@ -42,6 +46,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ 
+      success: true,
       message: 'Check-in successful', 
       ticketId: result.ticket.id,
       attendeeName: result.ticket.attendeeName,
@@ -51,6 +56,7 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.message === 'NOT_FOUND') return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+      if (error.message === 'PAYMENT_REQUIRED') return NextResponse.json({ error: 'Ticket payment is incomplete or unverified. Gate entry denied.' }, { status: 402 });
       if (error.message === 'ALREADY_CHECKED_IN') return NextResponse.json({ error: 'Ticket is already checked in' }, { status: 409 });
     }
     

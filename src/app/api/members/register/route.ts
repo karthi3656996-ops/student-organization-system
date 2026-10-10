@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { name, studentId, department, email } = body;
+    const { name, studentId, department, email, graduationYear, phoneNumber } = body;
 
     // 1. Validation
     if (!name || typeof name !== "string" || name.trim().length < 2) {
@@ -48,6 +48,22 @@ export async function POST(request: Request) {
     const cleanStudentId = studentId.trim();
     const cleanDept = department.trim();
     const cleanEmail = email.trim().toLowerCase();
+
+    // Parse graduationYear if provided, else default to current year + 2
+    let parsedGraduationYear = new Date().getFullYear() + 2;
+    if (graduationYear !== undefined && graduationYear !== null && graduationYear !== "") {
+      const yearNum = Number(graduationYear);
+      const currentYear = new Date().getFullYear();
+      if (!Number.isInteger(yearNum) || yearNum < currentYear || yearNum > currentYear + 8) {
+        return NextResponse.json(
+          { success: false, message: `Graduation year must be an integer between ${currentYear} and ${currentYear + 8}.` },
+          { status: 400 }
+        );
+      }
+      parsedGraduationYear = yearNum;
+    }
+
+    const cleanPhone = (typeof phoneNumber === "string" && phoneNumber.trim()) ? phoneNumber.trim() : "N/A";
 
     // 2. Check for duplicate Student ID
     const existingMember = await prisma.member.findUnique({
@@ -93,8 +109,8 @@ export async function POST(request: Request) {
           userId: user.id,
           studentId: cleanStudentId,
           department: cleanDept,
-          graduationYear: new Date().getFullYear() + 2,
-          phoneNumber: "N/A",
+          graduationYear: parsedGraduationYear,
+          phoneNumber: cleanPhone,
           status: "ACTIVE",
           validFrom: new Date(),
           validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),

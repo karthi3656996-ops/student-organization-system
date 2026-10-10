@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { createPaymentOrder } from "@/lib/razorpay";
 
 export async function POST(request: Request) {
   try {
@@ -183,27 +184,68 @@ export async function POST(request: Request) {
       }
     }
 
-    // 5. Calculate Total Amount & Pricing
+    // 5. Calculate Total Amount & Pricing (Authoritative DB check)
     const unitPrice = Number(selectedTier.price);
     const totalAmount = unitPrice * parsedQty;
+    const isFree = totalAmount === 0;
     const bookingReference = `BK-2026-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
     // 6. Execute Atomic Booking in Prisma Transaction
     const bookingResult = await prisma.$transaction(async (tx) => {
-      // Record Financial Transaction (Double-entry treasury ledger)
-      const txn = await tx.financialTransaction.create({
-        data: {
-          transactionNumber: `TXN-2026-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-          type: "INCOME",
-          sourceModule: "EVENT_TICKETS",
-          amount: totalAmount,
-          referenceId: bookingReference,
-          semesterPeriod: "SPRING_2026",
-          description: `Gala Ticket Booking ${bookingReference} (${parsedQty}x ${selectedTier.tierName})`,
-        },
-      });
+      // Free ticket booking: immediately CONFIRMED, no financial income transaction
+      if (isFree) {
+        const booking = await tx.ticketBooking.create({
+          data: {
+            bookingReference,
+            eventId: event.id,
+            userId: verifiedUserId,
+            guestName: cleanAttendeeName,
+            guestEmail: cleanAttendeeEmail,
+            totalAmount: 0,
+            paymentStatus: "CONFIRMED",
+            financialTxnId: null,
+          },
+        });
 
-      // Create Ticket Booking
+        // Create Individual Ticket Instances for free tickets
+        const ticketsData = Array.from({ length: parsedQty }).map((_, index) => {
+          const passSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+          const ticketCode = `PASS-2026-FREE-${passSuffix}`;
+          const individualAttendee =
+            parsedQty === 1
+              ? cleanAttendeeName
+              : `${cleanAttendeeName} (Guest ${index + 1})`;
+
+          return {
+            bookingId: booking.id,
+            tierId: selectedTier.id,
+            ticketCode,
+            attendeeName: individualAttendee,
+            isCheckedIn: false,
+          };
+        });
+
+        await tx.ticketInstance.createMany({
+          data: ticketsData,
+        });
+
+        return await tx.ticketBooking.findUnique({
+          where: { id: booking.id },
+          include: {
+            tickets: true,
+            event: {
+              select: {
+                title: true,
+                venue: true,
+                startTime: true,
+              },
+            },
+          },
+        });
+      }
+
+      // Paid ticket booking: MUST start with PENDING_PAYMENT status
+      // DO NOT record any financial income transaction yet!
       const booking = await tx.ticketBooking.create({
         data: {
           bookingReference,
@@ -212,15 +254,13 @@ export async function POST(request: Request) {
           guestName: cleanAttendeeName,
           guestEmail: cleanAttendeeEmail,
           totalAmount,
-          paymentStatus: "CONFIRMED",
-          financialTxnId: txn.id,
+          paymentStatus: "PENDING_PAYMENT",
+          financialTxnId: null,
         },
       });
 
-      // Create Individual Ticket Instances
-      const ticketsData = Array.from({ length: parsedQty }).map((_, index) => {
-        const passSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const ticketCode = `PASS-2026-GALA-${passSuffix}`;
+      // Create inactive placeholder instances with PENDING- prefix (NOT valid entry passes)
+      const pendingTicketsData = Array.from({ length: parsedQty }).map((_, index) => {
         const individualAttendee =
           parsedQty === 1
             ? cleanAttendeeName
@@ -229,18 +269,17 @@ export async function POST(request: Request) {
         return {
           bookingId: booking.id,
           tierId: selectedTier.id,
-          ticketCode,
+          ticketCode: `PENDING-${bookingReference}-${index + 1}`,
           attendeeName: individualAttendee,
           isCheckedIn: false,
         };
       });
 
       await tx.ticketInstance.createMany({
-        data: ticketsData,
+        data: pendingTicketsData,
       });
 
-      // Retrieve full created booking with tickets
-      const fullBooking = await tx.ticketBooking.findUnique({
+      return await tx.ticketBooking.findUnique({
         where: { id: booking.id },
         include: {
           tickets: true,
@@ -253,14 +292,58 @@ export async function POST(request: Request) {
           },
         },
       });
-
-      return fullBooking;
     });
 
+    // 7. For paid tickets, initialize payment order with payment gateway
+    if (!isFree) {
+      const razorpayOrder = await createPaymentOrder({
+        amountInRupees: totalAmount,
+        currency: "INR",
+        receipt: bookingReference,
+        notes: {
+          purpose: "EVENT_TICKET",
+          bookingReference,
+          eventId: event.id,
+          tierId: selectedTier.id,
+          quantity: parsedQty.toString(),
+        },
+      });
+
+      return NextResponse.json(
+        {
+          success: true,
+          isPaymentRequired: true,
+          message: "Reservation initiated. Payment required to confirm tickets.",
+          bookingReference,
+          totalAmount,
+          razorpayOrder,
+          booking: {
+            id: bookingResult?.id,
+            bookingReference: bookingResult?.bookingReference,
+            eventTitle: bookingResult?.event.title,
+            venue: bookingResult?.event.venue,
+            startTime: bookingResult?.event.startTime,
+            tierName: selectedTier.tierName,
+            unitPrice,
+            quantity: parsedQty,
+            totalAmount,
+            guestName: cleanAttendeeName,
+            guestEmail: cleanAttendeeEmail,
+            paymentStatus: "PENDING_PAYMENT",
+            tickets: [], // Omit active entry tickets until payment verified
+          },
+        },
+        { status: 201 }
+      );
+    }
+
+    // 8. For free tickets, return confirmed booking with active digital passes
     return NextResponse.json(
       {
         success: true,
-        message: "Tickets successfully booked!",
+        isPaymentRequired: false,
+        message: "Free event tickets successfully reserved!",
+        bookingReference: bookingResult?.bookingReference,
         booking: {
           id: bookingResult?.id,
           bookingReference: bookingResult?.bookingReference,
@@ -268,11 +351,12 @@ export async function POST(request: Request) {
           venue: bookingResult?.event.venue,
           startTime: bookingResult?.event.startTime,
           tierName: selectedTier.tierName,
-          unitPrice,
+          unitPrice: 0,
           quantity: parsedQty,
-          totalAmount,
+          totalAmount: 0,
           guestName: cleanAttendeeName,
           guestEmail: cleanAttendeeEmail,
+          paymentStatus: "CONFIRMED",
           tickets: bookingResult?.tickets.map((t) => ({
             ticketCode: t.ticketCode,
             attendeeName: t.attendeeName,
