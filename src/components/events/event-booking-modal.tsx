@@ -111,13 +111,14 @@ export const EventBookingModal: React.FC<EventBookingModalProps> = ({
       .then((res) => res.json())
       .then((data) => {
         if (!isMounted) return;
-        if (data.success && Array.isArray(data.events)) {
-          setEvents(data.events);
+        const eventList = Array.isArray(data) ? data : (data.events || []);
+        if (Array.isArray(eventList) && eventList.length > 0) {
+          setEvents(eventList);
 
           // Select event
           const targetEvent =
-            data.events.find((e: AvailableEvent) => e.id === preselectedEventId) ||
-            data.events[0];
+            eventList.find((e: AvailableEvent) => e.id === preselectedEventId) ||
+            eventList[0];
 
           if (targetEvent) {
             setSelectedEventId(targetEvent.id);
