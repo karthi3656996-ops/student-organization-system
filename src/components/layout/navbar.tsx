@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   Compass, 
@@ -14,9 +14,17 @@ import {
   ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MemberRegistrationModal } from "@/components/membership/member-registration-modal";
 
 export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [registerModalOpen, setRegisterModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpen = () => setRegisterModalOpen(true);
+    window.addEventListener("open-member-registration", handleOpen);
+    return () => window.removeEventListener("open-member-registration", handleOpen);
+  }, []);
 
   const navLinks = [
     { name: "Events", href: "#events", icon: Calendar },
@@ -69,12 +77,15 @@ export const Navbar: React.FC = () => {
                 Sign In
               </Button>
             </Link>
-            <Link href="#membership">
-              <Button variant="gradient" size="sm" className="gap-1.5">
-                Join Skyline
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Button>
-            </Link>
+            <Button
+              variant="gradient"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setRegisterModalOpen(true)}
+            >
+              Join Skyline
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
           </div>
 
           {/* Mobile Menu Trigger */}
@@ -113,14 +124,25 @@ export const Navbar: React.FC = () => {
                 Member Sign In
               </Button>
             </Link>
-            <Link href="#membership" onClick={() => setMobileMenuOpen(false)}>
-              <Button variant="gradient" className="w-full justify-center">
-                Join the Association
-              </Button>
-            </Link>
+            <Button
+              variant="gradient"
+              className="w-full justify-center"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setRegisterModalOpen(true);
+              }}
+            >
+              Join the Association
+            </Button>
           </div>
         </div>
       )}
+
+      {/* Member Registration Modal */}
+      <MemberRegistrationModal
+        isOpen={registerModalOpen}
+        onClose={() => setRegisterModalOpen(false)}
+      />
     </header>
   );
 };

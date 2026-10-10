@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useState, useEffect, useCallback } from "react";
 import { 
   Calendar, 
   Users, 
@@ -17,8 +19,32 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EventBookingModal } from "@/components/events/event-booking-modal";
 
 export default function HomePage() {
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [remainingSeats, setRemainingSeats] = useState<number>(200);
+
+  const loadEventCapacity = useCallback(() => {
+    fetch("/api/events")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.events) && data.events.length > 0) {
+          setRemainingSeats(data.events[0].remainingCapacity);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch event capacity:", err);
+      });
+  }, []);
+
+  useEffect(() => {
+    loadEventCapacity();
+
+    const handleOpenBooking = () => setIsBookingModalOpen(true);
+    window.addEventListener("open-event-booking", handleOpenBooking);
+    return () => window.removeEventListener("open-event-booking", handleOpenBooking);
+  }, [loadEventCapacity]);
   return (
     <div className="relative overflow-hidden">
       {/* Background Decorative Gradient Blobs */}
@@ -58,18 +84,24 @@ export default function HomePage() {
 
           {/* Call to Actions */}
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a href="#events">
-              <Button variant="gradient" size="lg" className="w-full sm:w-auto gap-2 text-base">
-                <Calendar className="w-4 h-4" />
-                Explore Spring Gala 2026
-              </Button>
-            </a>
-            <a href="#membership">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto gap-2 text-base">
-                <Users className="w-4 h-4" />
-                Join Membership ($15/yr)
-              </Button>
-            </a>
+            <Button
+              variant="gradient"
+              size="lg"
+              className="w-full sm:w-auto gap-2 text-base cursor-pointer"
+              onClick={() => setIsBookingModalOpen(true)}
+            >
+              <Calendar className="w-4 h-4" />
+              Book Spring Gala 2026
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full sm:w-auto gap-2 text-base cursor-pointer"
+              onClick={() => window.dispatchEvent(new CustomEvent("open-member-registration"))}
+            >
+              <Users className="w-4 h-4" />
+              Join Membership ($15/yr)
+            </Button>
           </div>
 
           {/* Trust & Capability Metric Cards */}
@@ -127,7 +159,7 @@ export default function HomePage() {
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                   <Badge variant="purple">Flagship Event of the Year</Badge>
                   <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
-                    Seats Remaining: 48 / 200
+                    Seats Remaining: {remainingSeats} / 200
                   </span>
                 </div>
 
@@ -184,7 +216,11 @@ export default function HomePage() {
 
               <CardFooter className="mt-8">
                 <span className="text-xs text-slate-400">Includes dinner buffet & gala access</span>
-                <Button variant="gradient" className="gap-2">
+                <Button
+                  variant="gradient"
+                  className="gap-2 cursor-pointer"
+                  onClick={() => setIsBookingModalOpen(true)}
+                >
                   Book Tickets Online
                   <ArrowRight className="w-4 h-4" />
                 </Button>
@@ -270,6 +306,16 @@ export default function HomePage() {
                   Online or Cash table dues recording
                 </li>
               </ul>
+              <div className="mt-6 pt-4 border-t border-slate-800">
+                <Button
+                  variant="gradient"
+                  size="sm"
+                  className="w-full justify-center text-xs"
+                  onClick={() => window.dispatchEvent(new CustomEvent("open-member-registration"))}
+                >
+                  Open Table Registration
+                </Button>
+              </div>
             </Card>
 
             {/* Feature 2: Member Benefits & Discounts */}
@@ -689,6 +735,12 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      {/* Event Ticket Booking Modal */}
+      <EventBookingModal
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        onSuccess={() => loadEventCapacity()}
+      />
     </div>
   );
 }
