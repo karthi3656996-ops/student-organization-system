@@ -4,108 +4,27 @@ import { prisma } from '@/lib/prisma';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const statusParam = searchParams.get('status');
+    const status = searchParams.get('status');
 
-    // Query filter: support explicit status query, or default to published events for public views
     const query: Record<string, string> = {};
-    if (statusParam) {
-      if (['DRAFT', 'PUBLISHED', 'COMPLETED', 'CANCELLED'].includes(statusParam)) {
-        query.status = statusParam;
+    if (status) {
+      // Validate status against enum manually since it's a string from URL
+      if (['DRAFT', 'PUBLISHED', 'COMPLETED', 'CANCELLED'].includes(status)) {
+        query.status = status;
       }
-    } else {
-      query.status = 'PUBLISHED';
     }
 
     const events = await prisma.event.findMany({
       where: query,
       include: {
         ticketTiers: true,
-        bookings: {
-          include: {
-            tickets: true,
-          },
-        },
       },
       orderBy: {
         startTime: 'asc',
       },
     });
 
-    const formattedEvents = events.map((event) => {
-      // Calculate total confirmed tickets booked (PAID or CONFIRMED)
-      const confirmedBookedTickets = event.bookings.reduce(
-        (sum, booking) =>
-          sum + (booking.paymentStatus === 'PAID' || booking.paymentStatus === 'CONFIRMED' ? booking.tickets.length : 0),
-        0
-      );
-
-      const pendingTickets = event.bookings.reduce(
-        (sum, booking) =>
-          sum + (booking.paymentStatus === 'PENDING_PAYMENT' ? booking.tickets.length : 0),
-        0
-      );
-
-      const remainingCapacity = Math.max(0, event.totalCapacity - confirmedBookedTickets);
-
-      // Calculate per-tier remaining
-      const tiersWithAvailability = event.ticketTiers.map((tier) => {
-        const tierBooked = event.bookings.reduce(
-          (sum, booking) =>
-            sum +
-            (booking.paymentStatus === 'PAID' || booking.paymentStatus === 'CONFIRMED'
-              ? booking.tickets.filter((t) => t.tierId === tier.id).length
-              : 0),
-          0
-        );
-
-        const tierRemaining = tier.capacityLimit !== null && tier.capacityLimit !== undefined
-          ? Math.max(0, tier.capacityLimit - tierBooked)
-          : remainingCapacity;
-
-        return {
-          id: tier.id,
-          eventId: tier.eventId,
-          tierName: tier.tierName,
-          price: Number(tier.price),
-          isMemberOnly: tier.isMemberOnly,
-          capacityLimit: tier.capacityLimit,
-          bookedTickets: tierBooked,
-          remaining: Math.min(tierRemaining, remainingCapacity),
-        };
-      });
-
-      return {
-        id: event.id,
-        title: event.title,
-        slug: event.slug,
-        description: event.description,
-        venue: event.venue,
-        startTime: event.startTime,
-        endTime: event.endTime,
-        totalCapacity: event.totalCapacity,
-        imageUrl: event.imageUrl || "/images/events/default-event.svg",
-        status: event.status,
-        bookedTickets: confirmedBookedTickets,
-        pendingTickets,
-        remainingCapacity,
-        ticketTiers: tiersWithAvailability,
-        bookings: event.bookings.map((b) => ({
-          id: b.id,
-          bookingReference: b.bookingReference,
-          guestName: b.guestName,
-          guestEmail: b.guestEmail,
-          paymentStatus: b.paymentStatus,
-          totalAmount: Number(b.totalAmount),
-          ticketCount: b.tickets.length,
-          createdAt: b.createdAt,
-        })),
-      };
-    });
-
-    return NextResponse.json({
-      success: true,
-      events: formattedEvents,
-    });
+    return NextResponse.json(events);
   } catch (error) {
     console.error('Failed to fetch events:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -115,17 +34,11 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, slug, description, venue, startTime, endTime, totalCapacity, status, ticketTiers, imageUrl } = body;
+    const { title, slug, description, venue, startTime, endTime, totalCapacity, status, ticketTiers } = body;
 
     // Validation
     if (!title || !slug || !description || !venue || !startTime || !endTime || totalCapacity === undefined) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    // Validate imageUrl if provided
-    let cleanImageUrl: string | null = null;
-    if (typeof imageUrl === "string" && imageUrl.trim()) {
-      cleanImageUrl = imageUrl.trim();
     }
 
     const start = new Date(startTime);
@@ -175,7 +88,7 @@ export async function POST(request: Request) {
 
     const eventStatus = (status && ['DRAFT', 'PUBLISHED', 'COMPLETED', 'CANCELLED'].includes(status)) ? status : 'DRAFT';
 
-    // Create Event in Prisma
+    // Create Event
     const newEvent = await prisma.event.create({
       data: {
         title,
@@ -185,7 +98,6 @@ export async function POST(request: Request) {
         startTime: start,
         endTime: end,
         totalCapacity,
-        imageUrl: cleanImageUrl || "/images/events/default-event.svg",
         status: eventStatus,
         ticketTiers: {
           create: tiersData,
@@ -202,5 +114,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-

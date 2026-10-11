@@ -34,15 +34,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     }
 
     // Only allow updating certain fields for simplicity
-    const { title, description, venue, startTime, endTime, totalCapacity, status, imageUrl } = body;
+    const { title, description, venue, startTime, endTime, totalCapacity, status } = body;
     
     const updateData: Record<string, unknown> = {};
     if (title) updateData.title = title;
     if (description) updateData.description = description;
     if (venue) updateData.venue = venue;
-    if (imageUrl !== undefined) {
-      updateData.imageUrl = typeof imageUrl === "string" && imageUrl.trim() ? imageUrl.trim() : "/images/events/default-event.svg";
-    }
     
     if (startTime) {
       const start = new Date(startTime);
@@ -57,8 +54,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
     }
     
     // If both are provided, validate them together, or validate against existing
-    const finalStart = (updateData.startTime as Date) || existing.startTime;
-    const finalEnd = (updateData.endTime as Date) || existing.endTime;
+    const finalStart = updateData.startTime || existing.startTime;
+    const finalEnd = updateData.endTime || existing.endTime;
     if (finalStart >= finalEnd) {
       return NextResponse.json({ error: 'startTime must be before endTime' }, { status: 400 });
     }

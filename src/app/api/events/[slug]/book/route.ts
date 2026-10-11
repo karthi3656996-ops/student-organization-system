@@ -21,7 +21,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
       }
     }
 
-    // Interactive transaction to prevent overbooking race conditions
+    // We use an interactive transaction to prevent overbooking race conditions
     const booking = await prisma.$transaction(async (tx) => {
       // 1. Fetch Event and its Ticket Tiers
       const event = await tx.event.findUnique({
@@ -95,7 +95,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
 
       // 5. Generate Reference and Create Booking
       const bookingReference = `BK-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      const isFree = totalAmount === 0;
 
       const newBooking = await tx.ticketBooking.create({
         data: {
@@ -105,13 +104,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
           guestName: guestName || null,
           guestEmail: guestEmail || null,
           totalAmount,
-          paymentStatus: isFree ? 'CONFIRMED' : 'PENDING_PAYMENT',
-          financialTxnId: null,
+          paymentStatus: 'PAID', // In a real app, this would be PENDING until payment webhook succeeds
           tickets: {
-            create: tickets.map((t: { tierId: string, attendeeName: string }, idx: number) => ({
+            create: tickets.map((t: { tierId: string, attendeeName: string }) => ({
               tierId: t.tierId,
               attendeeName: t.attendeeName,
-              ticketCode: isFree ? `TCK-${crypto.randomUUID()}` : `PENDING-${bookingReference}-${idx + 1}`
+              ticketCode: `TCK-${crypto.randomUUID()}`
             }))
           }
         },
